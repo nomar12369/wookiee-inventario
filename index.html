@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wookiee Cloud - Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; padding-bottom: 50px; }
+        
+        /* HEADER Y DASHBOARD */
+        .header-section { background: #2c3e50; color: white; padding: 20px 20px 60px 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .dash-card { background: white; color: #333; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column; justify-content: center; }
+        .dash-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #7f8c8d; font-weight: bold; margin-bottom: 5px; }
+        .dash-value { font-size: 1.6rem; font-weight: 800; color: #2c3e50; }
+        .text-money-green { color: #27ae60; }
+        
+        /* CONTENEDOR PRINCIPAL */
+        .main-container { margin-top: -40px; padding: 0 15px; }
+        .bg-glass { background: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; border: none; }
+        
+        /* TABLA */
+        .table-responsive { max-height: 65vh; overflow-y: auto; }
+        thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 5; }
+        .low-stock-row { background-color: #fff0f0 !important; }
+        
+        /* IMAGENES */
+        .img-preview { width: 50px; height: 50px; border-radius: 8px; background: #eee; object-fit: cover; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s; }
+        .img-preview:hover { transform: scale(1.5); z-index: 10; border-color: #3498db; }
+        .no-img { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 8px; color: #aaa; cursor: pointer; }
+
+        /* INPUTS */
+        .cell-input { border: 1px solid transparent; background: transparent; text-align: center; width: 100%; font-size: 0.95rem; padding: 4px; border-radius: 4px; }
+        .cell-input:focus { background: white; border-color: #3498db; outline: none; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); }
+        .font-price { color: #27ae60; font-weight: 600; width: 70px !important; }
+        .font-cost { color: #c0392b; font-size: 0.85rem; width: 60px !important; }
+        .font-stock { font-weight: bold; color: #2980b9; width: 50px !important; }
+
+        /* LOADER */
+        #app-loader { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(255,255,255,0.98); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    </style>
+</head>
+<body>
+
+<div id="app-loader">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="mt-3 text-secondary">Conectando Inventario...</h5>
+</div>
+
+<div class="header-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-0 fw-bold"><i class="bi bi-cloud-check"></i> Wookiee Online</h3>
+            <small class="opacity-75">Hecho por Nomar Medina</small>
+        </div>
+        <button class="btn btn-success fw-bold shadow-sm" onclick="saveData(false)">
+            <i class="bi bi-save"></i> Guardar Cambios
+        </button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-4">
+            <div class="dash-card">
+                <div class="dash-label">Inversión (Costo)</div>
+                <div class="dash-value" id="dashInvest">$0.00</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="dash-card">
+                <div class="dash-label">Valor Venta</div>
+                <div class="dash-value" id="dashValue">$0.00</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="dash-card">
+                <div class="dash-label">Ingresos Totales</div>
+                <div class="dash-value text-money-green" id="dashRevenue">$0.00</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid main-container">
+    <div class="card bg-glass">
+        <div class="card-body p-0">
+            
+            <ul class="nav nav-tabs nav-justified mb-0" id="mainTabs" role="tablist">
+                <li class="nav-item"><button class="nav-link active py-3 fw-bold" data-bs-toggle="tab" data-bs-target="#tab-stock">📦 Inventario</button></li>
+                <li class="nav-item"><button class="nav-link py-3 fw-bold" data-bs-toggle="tab" data-bs-target="#tab-sales">💰 Ventas</button></li>
+            </ul>
+
+            <div class="tab-content p-3">
+                
+                <div class="tab-pane fade show active" id="tab-stock">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar producto, código...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="catFilter" onchange="render()">
+                                <option value="">Todas las Categorías</option>
+                                <option value="Papelería">Papelería</option>
+                                <option value="Cintas">Cintas</option>
+                                <option value="Insumos">Insumos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary w-100" onclick="newItem()">+ Nuevo Producto</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle text-center mb-0">
+                            <thead class="table-light text-secondary small text-uppercase">
+                                <tr>
+                                    <th width="60">Img</th>
+                                    <th>Cat</th>
+                                    <th class="text-start">Producto</th>
+                                    <th>Var</th>
+                                    <th>Costo</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end align-items-center mt-3 gap-2">
+                        <button class="btn btn-sm btn-light border" onclick="pg(-1)">Anterior</button>
+                        <span class="small fw-bold" id="pageInd">1</span>
+                        <button class="btn btn-sm btn-light border" onclick="pg(1)">Siguiente</button>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-sales">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Historial de Transacciones</h5>
+                        <button class="btn btn-outline-danger btn-sm" onclick="clearHistory()">Limpiar Historial</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle text-center small">
+                            <thead class="table-dark">
+                                <tr><th>Fecha</th><th>Descripción</th><th>Cant.</th><th>Ingreso</th><th>Ganancia</th><th></th></tr>
+                            </thead>
+                            <tbody id="salesBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="imgUpload" accept="image/*" style="display:none">
+
+<div class="modal fade" id="sellModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white py-2"><h6 class="modal-title">Realizar Venta</h6></div>
+            <div class="modal-body text-center">
+                <h6 class="fw-bold mb-0" id="mProd"></h6>
+                <small class="text-muted d-block mb-3" id="mVar"></small>
+                
+                <div class="form-floating mb-2">
+                    <input type="number" class="form-control fw-bold text-center" id="mQty" value="1">
+                    <label>Cantidad</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="number" class="form-control text-success fw-bold text-center" id="mPrice">
+                    <label>Precio Venta ($)</label>
+                </div>
+                <button class="btn btn-success w-100" onclick="processSale()">CONFIRMAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<script>
+    // ===============================================
+    // 1. CONEXIÓN FIREBASE (TUS CREDENCIALES)
+    // ===============================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyAO-IfNVWcz_DyjAQDs31i7dvCaIBEH8Rg",
+        authDomain: "wookiee-inventario.firebaseapp.com",
+        projectId: "wookiee-inventario",
+        storageBucket: "wookiee-inventario.firebasestorage.app",
+        messagingSenderId: "438310377986",
+        appId: "1:438310377986:web:2e748049205e7d85d9e51b"
+    };
+
+    let db;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+    } catch (e) { console.error(e); }
+
+    // ===============================================
+    // 2. DATOS Y VARIABLES
+    // ===============================================
+    let inventory = [], sales = [];
+    let page = 1, LIMIT = 8;
+    let curImgIdx = -1, curSellIdx = -1;
+    const sellModal = new bootstrap.Modal('#sellModal');
+
+    // Generador de catálogo inicial (Backup)
+    function getBaseCatalog() {
+        const gen = (c, n, p, count) => Array.from({length:count}, (_,i)=>({cat:c, name:n, var:`#${(i+1).toString().padStart(3,'0')}`, price:p, cost:(p*0.6).toFixed(2), stock:0, img:''}));
+        return [
+            ...gen("Papelería", "Papel Borde Osc/F Claro", 6, 5),
+            ...gen("Papelería", "Papel Mosaico", 6, 5),
+            ...gen("Papelería", "Papel Unicolor", 6, 3),
+            ...gen("Papelería", "Papel Doble B Dorado", 6, 6),
+            ...gen("Papelería", "Papel Champagne", 6, 4),
+            ...gen("Papelería", "Papel Ondas", 6, 3),
+            ...gen("Papelería", "Papel Relieve", 6, 3),
+            ...gen("Papelería", "Papel Periódico", 6, 4),
+            ...gen("Papelería", "Papel Marmoleado", 6, 3),
+            ...gen("Papelería", "Papel Mariposa", 6, 3),
+            {cat:"Papelería", name:"Papel Doble Color", var:"#001", price:6, cost:3.6, stock:0, img:""},
+            ...gen("Papelería", "Papel Doble Dorado", 6, 3),
+            ...gen("Papelería", "Papel Borde B/N", 6, 2),
+            ...gen("Papelería", "Papel Borde Lat. Dorado", 6, 6),
+            ...gen("Papelería", "Papel Rayas Letra", 6, 3),
+            ...gen("Papelería", "Papel Puntos Sutiles", 6, 3),
+            ...gen("Papelería", "Papel Sólido Letras", 6, 2),
+            ...gen("Papelería", "Papel Tornasol", 5.5, 2),
+            ...gen("Papelería", "Papel Puntos Pequeños", 6, 3),
+            ...gen("Papelería", "Papel Borde Nube", 6, 3),
+            ...gen("Papelería", "Papel Borde Exhibir", 6, 3),
+            ...gen("Papelería", "Papel Espacio Brillante", 6, 4),
+            ...gen("Papelería", "Papel Espacio Mate", 6, 6),
+            ...gen("Papelería", "Papel Triple Línea", 6, 2),
+            ...gen("Papelería", "Papel Love Sutil", 6, 4),
+            ...gen("Papelería", "Papel Dior", 6, 2),
+            ...gen("Papelería", "Papel Rayas Mixtas", 6, 4),
+            ...gen("Papelería", "Papel Neutral Vibes", 6, 3),
+            ...gen("Papelería", "Papel Estrellado", 6, 2),
+            ...gen("Cintas", "Cinta Love is Eternal", 6.5, 8),
+            ...gen("Cintas", "Cinta Love", 6.5, 2),
+            ...gen("Insumos", "Malla Perlada", 4.5, 3),
+            {cat:"Insumos", name:"Alfileres Diamante", var:"100u", price:4, cost:2.4, stock:0, img:""},
+            {cat:"Insumos", name:"Porta Tarj. Metálico", var:"20u", price:4.5, cost:2.7, stock:0, img:""},
+            {cat:"Insumos", name:"Porta Tarj. Plástico", var:"80u", price:7, cost:4.2, stock:0, img:""},
+            {cat:"Insumos", name:"Luces Hadas", var:"3M", price:1, cost:0.6, stock:0, img:""},
+            {cat:"Insumos", name:"Coronas", var:"Peq", price:2, cost:1.2, stock:0, img:""},
+            {cat:"Insumos", name:"Armador Corazón", var:"Set 6", price:7, cost:4.2, stock:0, img:""},
+            {cat:"Insumos", name:"Mariposas", var:"12u", price:1.5, cost:0.9, stock:0, img:""},
+            {cat:"Insumos", name:"Capuchón Cono", var:"50u", price:5.5, cost:3.3, stock:0, img:""},
+            {cat:"Insumos", name:"Capuchón Cuadrado", var:"20u", price:4.5, cost:2.7, stock:0, img:""}
+        ];
+    }
+
+    // ===============================================
+    // 3. FUNCIONES PRINCIPALES
+    // ===============================================
+
+    // Cargar desde Nube
+    function init() {
+        db.collection("wookiee_db").doc("main_data").get().then((doc) => {
+            if (doc.exists) {
+                const d = doc.data();
+                inventory = d.inventory || getBaseCatalog();
+                sales = d.sales || [];
+            } else {
+                inventory = getBaseCatalog();
+                saveData(true);
+            }
+            document.getElementById('app-loader').style.display = 'none';
+            render();
+            renderSales();
+            calcStats();
+        }).catch(e => {
+            alert("Error conectando: " + e.message);
+            document.getElementById('app-loader').innerHTML = "<p class='text-danger'>Error de conexión. Revisa tu internet.</p>";
+        });
+    }
+
+    // Guardar en Nube
+    function saveData(silent = false) {
+        db.collection("wookiee_db").doc("main_data").set({
+            inventory: inventory,
+            sales: sales,
+            lastUpdate: new Date().toISOString()
+        }).then(() => {
+            if(!silent) Toastify({text: "✅ Guardado exitosamente", duration: 2000, style: {background: "#27ae60"}}).showToast();
+            calcStats();
+        });
+    }
+
+    // Renderizar Inventario
+    window.render = () => {
+        const txt = document.getElementById('searchInput').value.toLowerCase();
+        const cat = document.getElementById('catFilter').value;
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
+
+        // Filtrado
+        const filtered = inventory.map((it, idx)=>({...it, _id:idx})).filter(i => 
+            (i.name.toLowerCase().includes(txt) || i.var.toLowerCase().includes(txt)) && 
+            (cat === "" || i.cat === cat)
+        );
+
+        // Paginación
+        const totalPages = Math.ceil(filtered.length / LIMIT) || 1;
+        if(page > totalPages) page = 1;
+        const start = (page - 1) * LIMIT;
+        const list = filtered.slice(start, start + LIMIT);
+
+        document.getElementById('pageInd').innerText = `${page} / ${totalPages}`;
+
+        list.forEach(item => {
+            let rowClass = parseInt(item.stock) <= 3 ? "low-stock-row" : "";
+            let imgHtml = item.img 
+                ? `<img src="${item.img}" class="img-preview" onclick="clkImg(${item._id})">` 
+                : `<div class="no-img" onclick="clkImg(${item._id})"><i class="bi bi-camera"></i></div>`;
+
+            tbody.innerHTML += `
+                <tr class="${rowClass}">
+                    <td>${imgHtml}</td>
+                    <td class="text-muted small fw-bold text-uppercase">${item.cat.substring(0,3)}</td>
+                    <td class="text-start fw-bold">${item.name}</td>
+                    <td><input value="${item.var}" class="cell-input text-secondary" onchange="upd(${item._id},'var',this.value)"></td>
+                    <td><input type="number" value="${item.cost}" class="cell-input font-cost" onchange="upd(${item._id},'cost',this.value)"></td>
+                    <td><input type="number" value="${item.price}" class="cell-input font-price" onchange="upd(${item._id},'price',this.value)"></td>
+                    <td>
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <i class="bi bi-dash-circle-fill text-secondary" style="cursor:pointer" onclick="stk(${item._id}, -1)"></i>
+                            <input type="number" value="${item.stock}" class="cell-input font-stock" onchange="upd(${item._id},'stock',this.value)">
+                            <i class="bi bi-plus-circle-fill text-primary" style="cursor:pointer" onclick="stk(${item._id}, 1)"></i>
+                        </div>
+                    </td>
+                    <td><button class="btn btn-success btn-sm rounded-pill px-3" onclick="openSell(${item._id})">$</button></td>
+                </tr>
+            `;
+        });
+    };
+
+    // Acciones de Tabla
+    window.upd = (id, key, val) => {
+        inventory[id][key] = (key === 'var') ? val : parseFloat(val) || 0;
+        // No guardamos en nube cada tecla para ahorrar lecturas, usar botón guardar
+        calcStats();
+    };
+
+    window.stk = (id, delta) => {
+        let curr = parseFloat(inventory[id].stock) || 0;
+        let next = curr + delta;
+        if(next < 0) next = 0;
+        inventory[id].stock = next;
+        render();
+        calcStats();
+    };
+
+    window.pg = (d) => { page += d; render(); };
+    document.getElementById('searchInput').addEventListener('keyup', render);
+
+    // Imágenes
+    window.clkImg = (id) => { curImgIdx = id; document.getElementById('imgUpload').click(); };
+    document.getElementById('imgUpload').onchange = (e) => {
+        if(e.target.files[0]) {
+            const r = new FileReader();
+            r.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Comprimir
+                    const c = document.createElement('canvas');
+                    const ctx = c.getContext('2d');
+                    const S = 150; // Tamaño pequeño
+                    let w=img.width, h=img.height;
+                    if(w>h){ if(w>S){h*=S/w;w=S;}} else {if(h>S){w*=S/h;h=S;}}
+                    c.width=w; c.height=h;
+                    ctx.drawImage(img,0,0,w,h);
+                    inventory[curImgIdx].img = c.toDataURL('image/jpeg', 0.7);
+                    saveData(true); // Guardar imagen directo
+                    render();
+                };
+                img.src = ev.target.result;
+            };
+            r.readAsDataURL(e.target.files[0]);
+        }
+    };
+
+    // Ventas
+    window.openSell = (id) => {
+        curSellIdx = id;
+        const i = inventory[id];
+        document.getElementById('mProd').innerText = i.name;
+        document.getElementById('mVar').innerText = i.var;
+        document.getElementById('mPrice').value = i.price;
+        document.getElementById('mQty').value = 1;
+        sellModal.show();
+    };
+
+    window.processSale = () => {
+        const qty = parseFloat(document.getElementById('mQty').value);
+        const price = parseFloat(document.getElementById('mPrice').value);
+        const item = inventory[curSellIdx];
+
+        if(qty > 0) {
+            item.stock = Math.max(0, (parseFloat(item.stock)||0) - qty);
+            const total = qty * price;
+            const profit = total - (qty * (parseFloat(item.cost)||0));
+
+            sales.unshift({
+                date: new Date().toLocaleString(),
+                desc: `${item.name} (${item.var})`,
+                qty: qty,
+                total: total.toFixed(2),
+                profit: profit.toFixed(2)
+            });
+
+            sellModal.hide();
+            saveData(); // Guardar tras venta
+            render();
+            renderSales();
+        }
+    };
+
+    function renderSales() {
+        let html = "";
+        sales.slice(0, 50).forEach((s, i) => {
+            html += `<tr>
+                <td><small>${s.date.split(',')[0]}</small></td>
+                <td>${s.desc}</td>
+                <td>${s.qty}</td>
+                <td class="text-success fw-bold">$${s.total}</td>
+                <td class="text-primary small">$${s.profit}</td>
+                <td><button class="btn-close" onclick="delSale(${i})"></button></td>
+            </tr>`;
+        });
+        document.getElementById('salesBody').innerHTML = html;
+    }
+
+    window.delSale = (i) => { if(confirm("¿Borrar registro?")) { sales.splice(i,1); saveData(); renderSales(); } };
+    window.clearHistory = () => { if(confirm("¿Borrar todo el historial?")) { sales=[]; saveData(); renderSales(); } };
+
+    // ESTADISTICAS (DASHBOARD)
+    function calcStats() {
+        let invest = 0, value = 0;
+        inventory.forEach(i => {
+            const s = parseFloat(i.stock) || 0;
+            const c = parseFloat(i.cost) || 0;
+            const p = parseFloat(i.price) || 0;
+            invest += s * c;
+            value += s * p;
+        });
+
+        let revenue = sales.reduce((acc, s) => acc + parseFloat(s.total||0), 0);
+
+        // Actualizar DOM
+        document.getElementById('dashInvest').innerText = "$" + invest.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('dashValue').innerText = "$" + value.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('dashRevenue').innerText = "$" + revenue.toLocaleString(undefined, {minimumFractionDigits: 2});
+    }
+
+    window.newItem = () => {
+        const n = prompt("Nombre del producto:");
+        if(n) { inventory.unshift({cat:"Nuevo", name:n, var:"-", price:0, cost:0, stock:0, img:""}); render(); }
+    };
+
+    // INICIAR
+    init();
+
+</script>
+</body>
+</html>
