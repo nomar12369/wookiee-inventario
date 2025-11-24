@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wookiee Cloud - Manager</title>
+    <title>Wookiee Online - Facturación</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -41,20 +41,98 @@
 
         /* LOADER */
         #app-loader { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(255,255,255,0.98); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+
+        /* --- ESTILOS IMPRESIÓN (NOTA DE ENTREGA) --- */
+        #invoice-template { display: none; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #invoice-template, #invoice-template * { visibility: visible; }
+            #invoice-template {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                padding: 20px;
+            }
+            .header-section, .main-container, .modal, .toastify { display: none !important; }
+        }
+
+        .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #eee;
+            padding: 30px;
+            font-size: 16px;
+            line-height: 24px;
+            font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
+            color: #555;
+        }
+        .invoice-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .invoice-title { font-size: 24px; font-weight: bold; color: #333; }
+        .invoice-details { text-align: right; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div id="app-loader">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
-    <h5 class="mt-3 text-secondary">Conectando Inventario...</h5>
+    <h5 class="mt-3 text-secondary">Conectando a la Nube...</h5>
+</div>
+
+<div id="invoice-template">
+    <div class="invoice-box">
+        <div class="invoice-header">
+            <div>
+                <div class="invoice-title">Wookiee®</div>
+                <small>Equipos Médicos e Insumos</small><br>
+                <small>Guayana, Venezuela</small><br>
+                <small class="fw-bold">📞 +58 412-0314772</small>
+            </div>
+            <div class="invoice-details">
+                <strong>NOTA DE ENTREGA</strong><br>
+                Fecha: <span id="invDate"></span><br>
+                N° Control: <span id="invId" class="text-danger fw-bold"></span>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <strong>Cliente:</strong> <span id="invClient"></span><br>
+            <strong>Documento/RIF:</strong> <span id="invDoc"></span>
+        </div>
+
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Descripción</th>
+                    <th class="text-center">Cant.</th>
+                    <th class="text-end">Precio Unit.</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody id="invItems"></tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="text-end fw-bold">TOTAL A PAGAR:</td>
+                    <td class="text-end fw-bold fs-5" id="invTotal"></td>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <div class="mt-5 text-center text-muted small">
+            <p>¡Gracias por su compra!</p>
+            <p>__________________________<br>Recibido Conforme</p>
+        </div>
+    </div>
 </div>
 
 <div class="header-section">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="mb-0 fw-bold"><i class="bi bi-cloud-check"></i> Wookiee Online</h3>
-            <small class="opacity-75">Hecho por Nomar Medina</small>
+            <small class="opacity-75">Sistema de Gestión</small>
         </div>
         <button class="btn btn-success fw-bold shadow-sm" onclick="saveData(false)">
             <i class="bi bi-save"></i> Guardar Cambios
@@ -93,13 +171,12 @@
             </ul>
 
             <div class="tab-content p-3">
-                
                 <div class="tab-pane fade show active" id="tab-stock">
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar producto, código...">
+                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar producto...">
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -148,13 +225,12 @@
                     <div class="table-responsive">
                         <table class="table table-striped align-middle text-center small">
                             <thead class="table-dark">
-                                <tr><th>Fecha</th><th>Descripción</th><th>Cant.</th><th>Ingreso</th><th>Ganancia</th><th></th></tr>
+                                <tr><th>Control</th><th>Fecha</th><th>Cliente</th><th>Descripción</th><th>Total</th><th></th></tr>
                             </thead>
                             <tbody id="salesBody"></tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -163,22 +239,45 @@
 <input type="file" id="imgUpload" accept="image/*" style="display:none">
 
 <div class="modal fade" id="sellModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-white py-2"><h6 class="modal-title">Realizar Venta</h6></div>
-            <div class="modal-body text-center">
-                <h6 class="fw-bold mb-0" id="mProd"></h6>
-                <small class="text-muted d-block mb-3" id="mVar"></small>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <h5 class="fw-bold mb-0" id="mProd"></h5>
+                    <small class="text-muted" id="mVar"></small>
+                </div>
                 
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <input type="number" class="form-control fw-bold text-center" id="mQty" value="1">
+                            <label>Cantidad</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <input type="number" class="form-control text-success fw-bold text-center" id="mPrice">
+                            <label>Precio Unit ($)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <small class="text-muted fw-bold mb-2 d-block">Datos para Nota de Entrega</small>
                 <div class="form-floating mb-2">
-                    <input type="number" class="form-control fw-bold text-center" id="mQty" value="1">
-                    <label>Cantidad</label>
+                    <input type="text" class="form-control" id="mClientName" placeholder="Nombre del Cliente">
+                    <label>Nombre del Cliente</label>
                 </div>
                 <div class="form-floating mb-3">
-                    <input type="number" class="form-control text-success fw-bold text-center" id="mPrice">
-                    <label>Precio Venta ($)</label>
+                    <input type="text" class="form-control" id="mClientDoc" placeholder="Cédula o RIF">
+                    <label>Cédula / RIF</label>
                 </div>
-                <button class="btn btn-success w-100" onclick="processSale()">CONFIRMAR</button>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary w-50" onclick="processSale(false)">Solo Guardar</button>
+                    <button class="btn btn-success w-50" onclick="processSale(true)"><i class="bi bi-printer"></i> Guardar e Imprimir</button>
+                </div>
             </div>
         </div>
     </div>
@@ -191,7 +290,7 @@
 
 <script>
     // ===============================================
-    // 1. CONEXIÓN FIREBASE (TUS CREDENCIALES)
+    // 1. CONEXIÓN FIREBASE
     // ===============================================
     const firebaseConfig = {
         apiKey: "AIzaSyAO-IfNVWcz_DyjAQDs31i7dvCaIBEH8Rg",
@@ -209,72 +308,34 @@
     } catch (e) { console.error(e); }
 
     // ===============================================
-    // 2. DATOS Y VARIABLES
+    // 2. VARIABLES
     // ===============================================
     let inventory = [], sales = [];
+    let invoiceCounter = 0; // CONTADOR DE FACTURAS
     let page = 1, LIMIT = 8;
     let curImgIdx = -1, curSellIdx = -1;
     const sellModal = new bootstrap.Modal('#sellModal');
 
-    // Generador de catálogo inicial (Backup)
     function getBaseCatalog() {
         const gen = (c, n, p, count) => Array.from({length:count}, (_,i)=>({cat:c, name:n, var:`#${(i+1).toString().padStart(3,'0')}`, price:p, cost:(p*0.6).toFixed(2), stock:0, img:''}));
         return [
-            ...gen("Papelería", "Papel Borde Osc/F Claro", 6, 5),
-            ...gen("Papelería", "Papel Mosaico", 6, 5),
-            ...gen("Papelería", "Papel Unicolor", 6, 3),
-            ...gen("Papelería", "Papel Doble B Dorado", 6, 6),
-            ...gen("Papelería", "Papel Champagne", 6, 4),
-            ...gen("Papelería", "Papel Ondas", 6, 3),
-            ...gen("Papelería", "Papel Relieve", 6, 3),
-            ...gen("Papelería", "Papel Periódico", 6, 4),
-            ...gen("Papelería", "Papel Marmoleado", 6, 3),
-            ...gen("Papelería", "Papel Mariposa", 6, 3),
-            {cat:"Papelería", name:"Papel Doble Color", var:"#001", price:6, cost:3.6, stock:0, img:""},
-            ...gen("Papelería", "Papel Doble Dorado", 6, 3),
-            ...gen("Papelería", "Papel Borde B/N", 6, 2),
-            ...gen("Papelería", "Papel Borde Lat. Dorado", 6, 6),
-            ...gen("Papelería", "Papel Rayas Letra", 6, 3),
-            ...gen("Papelería", "Papel Puntos Sutiles", 6, 3),
-            ...gen("Papelería", "Papel Sólido Letras", 6, 2),
-            ...gen("Papelería", "Papel Tornasol", 5.5, 2),
-            ...gen("Papelería", "Papel Puntos Pequeños", 6, 3),
-            ...gen("Papelería", "Papel Borde Nube", 6, 3),
-            ...gen("Papelería", "Papel Borde Exhibir", 6, 3),
-            ...gen("Papelería", "Papel Espacio Brillante", 6, 4),
-            ...gen("Papelería", "Papel Espacio Mate", 6, 6),
-            ...gen("Papelería", "Papel Triple Línea", 6, 2),
-            ...gen("Papelería", "Papel Love Sutil", 6, 4),
-            ...gen("Papelería", "Papel Dior", 6, 2),
-            ...gen("Papelería", "Papel Rayas Mixtas", 6, 4),
-            ...gen("Papelería", "Papel Neutral Vibes", 6, 3),
-            ...gen("Papelería", "Papel Estrellado", 6, 2),
-            ...gen("Cintas", "Cinta Love is Eternal", 6.5, 8),
-            ...gen("Cintas", "Cinta Love", 6.5, 2),
-            ...gen("Insumos", "Malla Perlada", 4.5, 3),
-            {cat:"Insumos", name:"Alfileres Diamante", var:"100u", price:4, cost:2.4, stock:0, img:""},
-            {cat:"Insumos", name:"Porta Tarj. Metálico", var:"20u", price:4.5, cost:2.7, stock:0, img:""},
-            {cat:"Insumos", name:"Porta Tarj. Plástico", var:"80u", price:7, cost:4.2, stock:0, img:""},
-            {cat:"Insumos", name:"Luces Hadas", var:"3M", price:1, cost:0.6, stock:0, img:""},
-            {cat:"Insumos", name:"Coronas", var:"Peq", price:2, cost:1.2, stock:0, img:""},
-            {cat:"Insumos", name:"Armador Corazón", var:"Set 6", price:7, cost:4.2, stock:0, img:""},
-            {cat:"Insumos", name:"Mariposas", var:"12u", price:1.5, cost:0.9, stock:0, img:""},
-            {cat:"Insumos", name:"Capuchón Cono", var:"50u", price:5.5, cost:3.3, stock:0, img:""},
-            {cat:"Insumos", name:"Capuchón Cuadrado", var:"20u", price:4.5, cost:2.7, stock:0, img:""}
+            ...gen("Papelería", "Papel Base", 6, 5),
+            {cat:"Insumos", name:"Producto Demo", var:"#001", price:10, cost:5, stock:10, img:""}
         ];
     }
 
     // ===============================================
-    // 3. FUNCIONES PRINCIPALES
+    // 3. FUNCIONES DE RED
     // ===============================================
 
-    // Cargar desde Nube
     function init() {
         db.collection("wookiee_db").doc("main_data").get().then((doc) => {
             if (doc.exists) {
                 const d = doc.data();
                 inventory = d.inventory || getBaseCatalog();
                 sales = d.sales || [];
+                // CARGAMOS EL CONTADOR (O empieza en 0 si no existe)
+                invoiceCounter = d.lastInvoiceId || 0;
             } else {
                 inventory = getBaseCatalog();
                 saveData(true);
@@ -285,36 +346,35 @@
             calcStats();
         }).catch(e => {
             alert("Error conectando: " + e.message);
-            document.getElementById('app-loader').innerHTML = "<p class='text-danger'>Error de conexión. Revisa tu internet.</p>";
         });
     }
 
-    // Guardar en Nube
     function saveData(silent = false) {
         db.collection("wookiee_db").doc("main_data").set({
             inventory: inventory,
             sales: sales,
+            lastInvoiceId: invoiceCounter, // GUARDAMOS EL CONTADOR
             lastUpdate: new Date().toISOString()
         }).then(() => {
-            if(!silent) Toastify({text: "✅ Guardado exitosamente", duration: 2000, style: {background: "#27ae60"}}).showToast();
+            if(!silent) Toastify({text: "☁️ Guardado en Nube", duration: 2000, style: {background: "#27ae60"}}).showToast();
             calcStats();
         });
     }
 
-    // Renderizar Inventario
+    // ===============================================
+    // 4. LÓGICA DE UI
+    // ===============================================
     window.render = () => {
         const txt = document.getElementById('searchInput').value.toLowerCase();
         const cat = document.getElementById('catFilter').value;
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
 
-        // Filtrado
         const filtered = inventory.map((it, idx)=>({...it, _id:idx})).filter(i => 
             (i.name.toLowerCase().includes(txt) || i.var.toLowerCase().includes(txt)) && 
             (cat === "" || i.cat === cat)
         );
 
-        // Paginación
         const totalPages = Math.ceil(filtered.length / LIMIT) || 1;
         if(page > totalPages) page = 1;
         const start = (page - 1) * LIMIT;
@@ -349,10 +409,8 @@
         });
     };
 
-    // Acciones de Tabla
     window.upd = (id, key, val) => {
         inventory[id][key] = (key === 'var') ? val : parseFloat(val) || 0;
-        // No guardamos en nube cada tecla para ahorrar lecturas, usar botón guardar
         calcStats();
     };
 
@@ -368,7 +426,6 @@
     window.pg = (d) => { page += d; render(); };
     document.getElementById('searchInput').addEventListener('keyup', render);
 
-    // Imágenes
     window.clkImg = (id) => { curImgIdx = id; document.getElementById('imgUpload').click(); };
     document.getElementById('imgUpload').onchange = (e) => {
         if(e.target.files[0]) {
@@ -376,16 +433,15 @@
             r.onload = (ev) => {
                 const img = new Image();
                 img.onload = () => {
-                    // Comprimir
                     const c = document.createElement('canvas');
                     const ctx = c.getContext('2d');
-                    const S = 150; // Tamaño pequeño
+                    const S = 150; 
                     let w=img.width, h=img.height;
                     if(w>h){ if(w>S){h*=S/w;w=S;}} else {if(h>S){w*=S/h;h=S;}}
                     c.width=w; c.height=h;
                     ctx.drawImage(img,0,0,w,h);
                     inventory[curImgIdx].img = c.toDataURL('image/jpeg', 0.7);
-                    saveData(true); // Guardar imagen directo
+                    saveData(true); 
                     render();
                 };
                 img.src = ev.target.result;
@@ -394,7 +450,9 @@
         }
     };
 
-    // Ventas
+    // ===============================================
+    // 5. VENTAS (LÓGICA MEJORADA)
+    // ===============================================
     window.openSell = (id) => {
         curSellIdx = id;
         const i = inventory[id];
@@ -402,12 +460,17 @@
         document.getElementById('mVar').innerText = i.var;
         document.getElementById('mPrice').value = i.price;
         document.getElementById('mQty').value = 1;
+        document.getElementById('mClientName').value = "";
+        document.getElementById('mClientDoc').value = "";
         sellModal.show();
     };
 
-    window.processSale = () => {
+    window.processSale = (shouldPrint) => {
         const qty = parseFloat(document.getElementById('mQty').value);
         const price = parseFloat(document.getElementById('mPrice').value);
+        const client = document.getElementById('mClientName').value || "Cliente General";
+        const docId = document.getElementById('mClientDoc').value || "-";
+        
         const item = inventory[curSellIdx];
 
         if(qty > 0) {
@@ -415,30 +478,65 @@
             const total = qty * price;
             const profit = total - (qty * (parseFloat(item.cost)||0));
 
-            sales.unshift({
+            // INCREMENTAMOS EL CONTADOR DE FACTURAS
+            invoiceCounter++;
+            const invoiceCode = String(invoiceCounter).padStart(6, '0'); // Ejem: 000001
+
+            const saleRecord = {
+                id: invoiceCode, // Guardamos el número correlativo
                 date: new Date().toLocaleString(),
                 desc: `${item.name} (${item.var})`,
+                client: client,
                 qty: qty,
+                priceUnit: price,
                 total: total.toFixed(2),
                 profit: profit.toFixed(2)
-            });
+            };
 
+            sales.unshift(saleRecord);
             sellModal.hide();
-            saveData(); // Guardar tras venta
+            
+            saveData(); // Guarda el inventario Y el nuevo contador
             render();
             renderSales();
+
+            if (shouldPrint) {
+                printInvoice(saleRecord);
+            }
         }
     };
+
+    function printInvoice(sale) {
+        document.getElementById('invDate').innerText = new Date().toLocaleDateString();
+        // Usamos el ID correlativo
+        document.getElementById('invId').innerText = sale.id; 
+        document.getElementById('invClient').innerText = sale.client;
+        document.getElementById('invDoc').innerText = document.getElementById('mClientDoc').value || "No indicado";
+        
+        document.getElementById('invItems').innerHTML = `
+            <tr>
+                <td>${sale.desc}</td>
+                <td class="text-center">${sale.qty}</td>
+                <td class="text-end">$${parseFloat(sale.priceUnit).toFixed(2)}</td>
+                <td class="text-end">$${sale.total}</td>
+            </tr>
+        `;
+        document.getElementById('invTotal').innerText = "$" + sale.total;
+
+        setTimeout(() => {
+            window.print();
+        }, 500);
+    }
 
     function renderSales() {
         let html = "";
         sales.slice(0, 50).forEach((s, i) => {
             html += `<tr>
+                <td class="text-muted fw-bold">#${s.id || '---'}</td>
                 <td><small>${s.date.split(',')[0]}</small></td>
+                <td><small class="text-muted">${s.client || '-'}</small></td>
                 <td>${s.desc}</td>
-                <td>${s.qty}</td>
                 <td class="text-success fw-bold">$${s.total}</td>
-                <td class="text-primary small">$${s.profit}</td>
                 <td><button class="btn-close" onclick="delSale(${i})"></button></td>
             </tr>`;
         });
@@ -448,7 +546,6 @@
     window.delSale = (i) => { if(confirm("¿Borrar registro?")) { sales.splice(i,1); saveData(); renderSales(); } };
     window.clearHistory = () => { if(confirm("¿Borrar todo el historial?")) { sales=[]; saveData(); renderSales(); } };
 
-    // ESTADISTICAS (DASHBOARD)
     function calcStats() {
         let invest = 0, value = 0;
         inventory.forEach(i => {
@@ -458,10 +555,7 @@
             invest += s * c;
             value += s * p;
         });
-
         let revenue = sales.reduce((acc, s) => acc + parseFloat(s.total||0), 0);
-
-        // Actualizar DOM
         document.getElementById('dashInvest').innerText = "$" + invest.toLocaleString(undefined, {minimumFractionDigits: 2});
         document.getElementById('dashValue').innerText = "$" + value.toLocaleString(undefined, {minimumFractionDigits: 2});
         document.getElementById('dashRevenue').innerText = "$" + revenue.toLocaleString(undefined, {minimumFractionDigits: 2});
@@ -472,7 +566,6 @@
         if(n) { inventory.unshift({cat:"Nuevo", name:n, var:"-", price:0, cost:0, stock:0, img:""}); render(); }
     };
 
-    // INICIAR
     init();
 
 </script>
