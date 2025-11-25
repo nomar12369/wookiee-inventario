@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wookiee Online - Facturación</title>
+    <title>Wookiee Cloud - Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -28,111 +28,43 @@
         .low-stock-row { background-color: #fff0f0 !important; }
         
         /* IMAGENES */
-        .img-preview { width: 50px; height: 50px; border-radius: 8px; background: #eee; object-fit: cover; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s; }
+        .img-preview { width: 45px; height: 45px; border-radius: 8px; background: #eee; object-fit: cover; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s; }
         .img-preview:hover { transform: scale(1.5); z-index: 10; border-color: #3498db; }
-        .no-img { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 8px; color: #aaa; cursor: pointer; }
+        .no-img { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 8px; color: #aaa; cursor: pointer; font-size: 0.8rem; }
 
         /* INPUTS */
-        .cell-input { border: 1px solid transparent; background: transparent; text-align: center; width: 100%; font-size: 0.95rem; padding: 4px; border-radius: 4px; }
-        .cell-input:focus { background: white; border-color: #3498db; outline: none; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); }
-        .font-price { color: #27ae60; font-weight: 600; width: 70px !important; }
-        .font-cost { color: #c0392b; font-size: 0.85rem; width: 60px !important; }
-        .font-stock { font-weight: bold; color: #2980b9; width: 50px !important; }
+        .cell-input { border: 1px solid transparent; background: transparent; text-align: center; width: 100%; font-size: 0.9rem; padding: 4px; border-radius: 4px; transition: 0.2s; }
+        .cell-input:focus { background: white; border-color: #3498db; outline: none; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); text-align: left; }
+        .cell-input:hover { background: rgba(0,0,0,0.02); }
+        
+        /* CLASES ESPECIFICAS DE INPUT */
+        .font-name { font-weight: bold; text-align: left; min-width: 120px; }
+        .font-cat { font-size: 0.8rem; text-transform: uppercase; color: #7f8c8d; font-weight: bold; width: 80px !important; }
+        .font-price { color: #27ae60; font-weight: 600; width: 60px !important; }
+        .font-cost { color: #c0392b; font-size: 0.85rem; width: 50px !important; }
+        .font-stock { font-weight: bold; color: #2980b9; width: 40px !important; }
+        .font-var { color: #555; font-size: 0.85rem; width: 60px !important; }
+
+        /* BOTONES DE ACCION */
+        .btn-move { padding: 0; border: none; background: transparent; color: #ccc; transition: 0.2s; }
+        .btn-move:hover { color: #333; }
 
         /* LOADER */
         #app-loader { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(255,255,255,0.98); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-
-        /* --- ESTILOS IMPRESIÓN (NOTA DE ENTREGA) --- */
-        #invoice-template { display: none; }
-        
-        @media print {
-            body * { visibility: hidden; }
-            #invoice-template, #invoice-template * { visibility: visible; }
-            #invoice-template {
-                display: block !important;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                background: white;
-                padding: 20px;
-            }
-            .header-section, .main-container, .modal, .toastify { display: none !important; }
-        }
-
-        .invoice-box {
-            max-width: 800px;
-            margin: auto;
-            border: 1px solid #eee;
-            padding: 30px;
-            font-size: 16px;
-            line-height: 24px;
-            font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
-            color: #555;
-        }
-        .invoice-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .invoice-title { font-size: 24px; font-weight: bold; color: #333; }
-        .invoice-details { text-align: right; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div id="app-loader">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
-    <h5 class="mt-3 text-secondary">Conectando a la Nube...</h5>
-</div>
-
-<div id="invoice-template">
-    <div class="invoice-box">
-        <div class="invoice-header">
-            <div>
-                <div class="invoice-title">Wookiee®</div>
-                <small>Papeles coreanos e Insumos de floristeria y decoracion</small><br>
-                <small>Guayana, Venezuela</small><br>
-                <small class="fw-bold">📞 +58 412-0314772</small>
-            </div>
-            <div class="invoice-details">
-                <strong>NOTA DE ENTREGA</strong><br>
-                Fecha: <span id="invDate"></span><br>
-                N° Control: <span id="invId" class="text-danger fw-bold"></span>
-            </div>
-        </div>
-
-        <div class="mb-4">
-            <strong>Cliente:</strong> <span id="invClient"></span><br>
-            <strong>Documento/RIF:</strong> <span id="invDoc"></span>
-        </div>
-
-        <table class="table table-bordered">
-            <thead class="table-light">
-                <tr>
-                    <th>Descripción</th>
-                    <th class="text-center">Cant.</th>
-                    <th class="text-end">Precio Unit.</th>
-                    <th class="text-end">Total</th>
-                </tr>
-            </thead>
-            <tbody id="invItems"></tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" class="text-end fw-bold">TOTAL A PAGAR:</td>
-                    <td class="text-end fw-bold fs-5" id="invTotal"></td>
-                </tr>
-            </tfoot>
-        </table>
-        
-        <div class="mt-5 text-center text-muted small">
-            <p>¡Gracias por su compra!</p>
-            <p>__________________________<br>Recibido Conforme</p>
-        </div>
-    </div>
+    <h5 class="mt-3 text-secondary">Conectando Inventario...</h5>
 </div>
 
 <div class="header-section">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="mb-0 fw-bold"><i class="bi bi-cloud-check"></i> Wookiee Online</h3>
-            <small class="opacity-75">Sistema de Gestión</small>
+            <small class="opacity-75">Hecho por Nomar Medina</small>
         </div>
         <button class="btn btn-success fw-bold shadow-sm" onclick="saveData(false)">
             <i class="bi bi-save"></i> Guardar Cambios
@@ -171,12 +103,13 @@
             </ul>
 
             <div class="tab-content p-3">
+                
                 <div class="tab-pane fade show active" id="tab-stock">
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar producto...">
+                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar producto, código...">
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -196,24 +129,28 @@
                         <table class="table table-hover align-middle text-center mb-0">
                             <thead class="table-light text-secondary small text-uppercase">
                                 <tr>
-                                    <th width="60">Img</th>
+                                    <th width="30">#</th>
+                                    <th width="50">Img</th>
                                     <th>Cat</th>
                                     <th class="text-start">Producto</th>
                                     <th>Var</th>
                                     <th>Costo</th>
                                     <th>Precio</th>
                                     <th>Stock</th>
-                                    <th></th>
+                                    <th width="100">Acción</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody"></tbody>
                         </table>
                     </div>
                     
-                    <div class="d-flex justify-content-end align-items-center mt-3 gap-2">
-                        <button class="btn btn-sm btn-light border" onclick="pg(-1)">Anterior</button>
-                        <span class="small fw-bold" id="pageInd">1</span>
-                        <button class="btn btn-sm btn-light border" onclick="pg(1)">Siguiente</button>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-muted fst-italic ms-2" id="msgFilter">Usa las flechas para ordenar.</small>
+                        <div class="d-flex gap-2 align-items-center">
+                            <button class="btn btn-sm btn-light border" onclick="pg(-1)">Anterior</button>
+                            <span class="small fw-bold" id="pageInd">1</span>
+                            <button class="btn btn-sm btn-light border" onclick="pg(1)">Siguiente</button>
+                        </div>
                     </div>
                 </div>
 
@@ -225,12 +162,13 @@
                     <div class="table-responsive">
                         <table class="table table-striped align-middle text-center small">
                             <thead class="table-dark">
-                                <tr><th>Control</th><th>Fecha</th><th>Cliente</th><th>Descripción</th><th>Total</th><th></th></tr>
+                                <tr><th>Fecha</th><th>Descripción</th><th>Cant.</th><th>Ingreso</th><th>Ganancia</th><th></th></tr>
                             </thead>
                             <tbody id="salesBody"></tbody>
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -239,45 +177,22 @@
 <input type="file" id="imgUpload" accept="image/*" style="display:none">
 
 <div class="modal fade" id="sellModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-white py-2"><h6 class="modal-title">Realizar Venta</h6></div>
-            <div class="modal-body">
-                <div class="text-center mb-3">
-                    <h5 class="fw-bold mb-0" id="mProd"></h5>
-                    <small class="text-muted" id="mVar"></small>
-                </div>
+            <div class="modal-body text-center">
+                <h6 class="fw-bold mb-0" id="mProd"></h6>
+                <small class="text-muted d-block mb-3" id="mVar"></small>
                 
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <div class="form-floating">
-                            <input type="number" class="form-control fw-bold text-center" id="mQty" value="1">
-                            <label>Cantidad</label>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="form-floating">
-                            <input type="number" class="form-control text-success fw-bold text-center" id="mPrice">
-                            <label>Precio Unit ($)</label>
-                        </div>
-                    </div>
-                </div>
-
-                <hr>
-                <small class="text-muted fw-bold mb-2 d-block">Datos para Nota de Entrega</small>
                 <div class="form-floating mb-2">
-                    <input type="text" class="form-control" id="mClientName" placeholder="Nombre del Cliente">
-                    <label>Nombre del Cliente</label>
+                    <input type="number" class="form-control fw-bold text-center" id="mQty" value="1">
+                    <label>Cantidad</label>
                 </div>
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="mClientDoc" placeholder="Cédula o RIF">
-                    <label>Cédula / RIF</label>
+                    <input type="number" class="form-control text-success fw-bold text-center" id="mPrice">
+                    <label>Precio Venta ($)</label>
                 </div>
-
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary w-50" onclick="processSale(false)">Solo Guardar</button>
-                    <button class="btn btn-success w-50" onclick="processSale(true)"><i class="bi bi-printer"></i> Guardar e Imprimir</button>
-                </div>
+                <button class="btn btn-success w-100" onclick="processSale()">CONFIRMAR</button>
             </div>
         </div>
     </div>
@@ -308,24 +223,25 @@
     } catch (e) { console.error(e); }
 
     // ===============================================
-    // 2. VARIABLES
+    // 2. DATOS Y VARIABLES
     // ===============================================
     let inventory = [], sales = [];
-    let invoiceCounter = 0; // CONTADOR DE FACTURAS
     let page = 1, LIMIT = 8;
     let curImgIdx = -1, curSellIdx = -1;
     const sellModal = new bootstrap.Modal('#sellModal');
 
+    // Generador de catálogo inicial (Backup)
     function getBaseCatalog() {
         const gen = (c, n, p, count) => Array.from({length:count}, (_,i)=>({cat:c, name:n, var:`#${(i+1).toString().padStart(3,'0')}`, price:p, cost:(p*0.6).toFixed(2), stock:0, img:''}));
         return [
-            ...gen("Papelería", "Papel Base", 6, 5),
-            {cat:"Insumos", name:"Producto Demo", var:"#001", price:10, cost:5, stock:10, img:""}
+            ...gen("Papelería", "Papel Borde Osc/F Claro", 6, 5),
+            ...gen("Papelería", "Papel Mosaico", 6, 5),
+            {cat:"Insumos", name:"Malla Perlada", var:"Standard", price:4.5, cost:3, stock:0, img:""}
         ];
     }
 
     // ===============================================
-    // 3. FUNCIONES DE RED
+    // 3. FUNCIONES PRINCIPALES
     // ===============================================
 
     function init() {
@@ -334,8 +250,6 @@
                 const d = doc.data();
                 inventory = d.inventory || getBaseCatalog();
                 sales = d.sales || [];
-                // CARGAMOS EL CONTADOR (O empieza en 0 si no existe)
-                invoiceCounter = d.lastInvoiceId || 0;
             } else {
                 inventory = getBaseCatalog();
                 saveData(true);
@@ -346,6 +260,7 @@
             calcStats();
         }).catch(e => {
             alert("Error conectando: " + e.message);
+            document.getElementById('app-loader').innerHTML = "<p class='text-danger'>Error de conexión.</p>";
         });
     }
 
@@ -353,28 +268,32 @@
         db.collection("wookiee_db").doc("main_data").set({
             inventory: inventory,
             sales: sales,
-            lastInvoiceId: invoiceCounter, // GUARDAMOS EL CONTADOR
             lastUpdate: new Date().toISOString()
         }).then(() => {
-            if(!silent) Toastify({text: "☁️ Guardado en Nube", duration: 2000, style: {background: "#27ae60"}}).showToast();
+            if(!silent) Toastify({text: "✅ Guardado exitosamente", duration: 2000, style: {background: "#27ae60"}}).showToast();
             calcStats();
         });
     }
 
-    // ===============================================
-    // 4. LÓGICA DE UI
-    // ===============================================
+    // Renderizar Inventario
     window.render = () => {
         const txt = document.getElementById('searchInput').value.toLowerCase();
         const cat = document.getElementById('catFilter').value;
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
 
+        // Filtrado y Mapeo de ID original
         const filtered = inventory.map((it, idx)=>({...it, _id:idx})).filter(i => 
             (i.name.toLowerCase().includes(txt) || i.var.toLowerCase().includes(txt)) && 
             (cat === "" || i.cat === cat)
         );
 
+        // Controlar mensaje de filtro
+        const isFiltered = (txt !== "" || cat !== "");
+        document.getElementById('msgFilter').style.display = isFiltered ? 'block' : 'none';
+        document.getElementById('msgFilter').innerText = isFiltered ? "⚠️ El reordenamiento se desactiva mientras buscas." : "Usa las flechas para mover productos.";
+
+        // Paginación
         const totalPages = Math.ceil(filtered.length / LIMIT) || 1;
         if(page > totalPages) page = 1;
         const start = (page - 1) * LIMIT;
@@ -382,18 +301,39 @@
 
         document.getElementById('pageInd').innerText = `${page} / ${totalPages}`;
 
-        list.forEach(item => {
+        list.forEach((item, index) => {
             let rowClass = parseInt(item.stock) <= 3 ? "low-stock-row" : "";
+            
+            // Imagen
             let imgHtml = item.img 
                 ? `<img src="${item.img}" class="img-preview" onclick="clkImg(${item._id})">` 
                 : `<div class="no-img" onclick="clkImg(${item._id})"><i class="bi bi-camera"></i></div>`;
 
+            // Botones de Mover (Solo visibles si no hay filtro)
+            let moveHtml = "";
+            if(!isFiltered) {
+                // Flecha Arriba (Desactivada si es el primero absoluto)
+                let upDisabled = (item._id === 0) ? "disabled style='opacity:0'" : "";
+                // Flecha Abajo (Desactivada si es el ultimo absoluto)
+                let downDisabled = (item._id === inventory.length - 1) ? "disabled style='opacity:0'" : "";
+
+                moveHtml = `
+                    <div class="d-flex flex-column align-items-center" style="width:20px">
+                        <button class="btn-move" onclick="moveItem(${item._id}, -1)" ${upDisabled}><i class="bi bi-caret-up-fill"></i></button>
+                        <button class="btn-move" onclick="moveItem(${item._id}, 1)" ${downDisabled}><i class="bi bi-caret-down-fill"></i></button>
+                    </div>
+                `;
+            } else {
+                moveHtml = `<span class="text-muted" style="font-size:0.7rem">•</span>`;
+            }
+
             tbody.innerHTML += `
                 <tr class="${rowClass}">
+                    <td>${moveHtml}</td>
                     <td>${imgHtml}</td>
-                    <td class="text-muted small fw-bold text-uppercase">${item.cat.substring(0,3)}</td>
-                    <td class="text-start fw-bold">${item.name}</td>
-                    <td><input value="${item.var}" class="cell-input text-secondary" onchange="upd(${item._id},'var',this.value)"></td>
+                    <td><input value="${item.cat}" class="cell-input font-cat" onchange="upd(${item._id},'cat',this.value)"></td>
+                    <td><input value="${item.name}" class="cell-input font-name" onchange="upd(${item._id},'name',this.value)"></td>
+                    <td><input value="${item.var}" class="cell-input font-var" onchange="upd(${item._id},'var',this.value)"></td>
                     <td><input type="number" value="${item.cost}" class="cell-input font-cost" onchange="upd(${item._id},'cost',this.value)"></td>
                     <td><input type="number" value="${item.price}" class="cell-input font-price" onchange="upd(${item._id},'price',this.value)"></td>
                     <td>
@@ -403,15 +343,51 @@
                             <i class="bi bi-plus-circle-fill text-primary" style="cursor:pointer" onclick="stk(${item._id}, 1)"></i>
                         </div>
                     </td>
-                    <td><button class="btn btn-success btn-sm rounded-pill px-3" onclick="openSell(${item._id})">$</button></td>
+                    <td>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <button class="btn btn-success btn-sm rounded-pill px-3" onclick="openSell(${item._id})">$</button>
+                            <button class="btn btn-outline-danger btn-sm rounded-circle" onclick="deleteItem(${item._id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </td>
                 </tr>
             `;
         });
     };
 
+    // Actualizar datos
     window.upd = (id, key, val) => {
-        inventory[id][key] = (key === 'var') ? val : parseFloat(val) || 0;
+        // Permitir texto para 'cat', 'name', 'var', numeros para el resto
+        if (['cat', 'name', 'var'].includes(key)) {
+            inventory[id][key] = val;
+        } else {
+            inventory[id][key] = parseFloat(val) || 0;
+        }
         calcStats();
+    };
+
+    // Mover de posicion
+    window.moveItem = (index, direction) => {
+        const newIndex = index + direction;
+        // Validar limites
+        if (newIndex >= 0 && newIndex < inventory.length) {
+            // Intercambiar elementos
+            const temp = inventory[index];
+            inventory[index] = inventory[newIndex];
+            inventory[newIndex] = temp;
+            
+            render(); // Re-renderizar para ver cambio visual inmediato
+            // Opcional: Guardar automáticamente al mover (recomendado)
+            // saveData(true); 
+        }
+    };
+
+    // Eliminar Item
+    window.deleteItem = (id) => {
+        if(confirm(`¿Estás seguro de ELIMINAR "${inventory[id].name}" permanentemente?`)) {
+            inventory.splice(id, 1); // Borrar del array
+            saveData(); // Guardar cambios
+            render();
+        }
     };
 
     window.stk = (id, delta) => {
@@ -426,6 +402,7 @@
     window.pg = (d) => { page += d; render(); };
     document.getElementById('searchInput').addEventListener('keyup', render);
 
+    // Imágenes
     window.clkImg = (id) => { curImgIdx = id; document.getElementById('imgUpload').click(); };
     document.getElementById('imgUpload').onchange = (e) => {
         if(e.target.files[0]) {
@@ -441,7 +418,7 @@
                     c.width=w; c.height=h;
                     ctx.drawImage(img,0,0,w,h);
                     inventory[curImgIdx].img = c.toDataURL('image/jpeg', 0.7);
-                    saveData(true); 
+                    saveData(true);
                     render();
                 };
                 img.src = ev.target.result;
@@ -450,9 +427,7 @@
         }
     };
 
-    // ===============================================
-    // 5. VENTAS (LÓGICA MEJORADA)
-    // ===============================================
+    // Ventas
     window.openSell = (id) => {
         curSellIdx = id;
         const i = inventory[id];
@@ -460,17 +435,12 @@
         document.getElementById('mVar').innerText = i.var;
         document.getElementById('mPrice').value = i.price;
         document.getElementById('mQty').value = 1;
-        document.getElementById('mClientName').value = "";
-        document.getElementById('mClientDoc').value = "";
         sellModal.show();
     };
 
-    window.processSale = (shouldPrint) => {
+    window.processSale = () => {
         const qty = parseFloat(document.getElementById('mQty').value);
         const price = parseFloat(document.getElementById('mPrice').value);
-        const client = document.getElementById('mClientName').value || "Cliente General";
-        const docId = document.getElementById('mClientDoc').value || "-";
-        
         const item = inventory[curSellIdx];
 
         if(qty > 0) {
@@ -478,65 +448,30 @@
             const total = qty * price;
             const profit = total - (qty * (parseFloat(item.cost)||0));
 
-            // INCREMENTAMOS EL CONTADOR DE FACTURAS
-            invoiceCounter++;
-            const invoiceCode = String(invoiceCounter).padStart(6, '0'); // Ejem: 000001
-
-            const saleRecord = {
-                id: invoiceCode, // Guardamos el número correlativo
+            sales.unshift({
                 date: new Date().toLocaleString(),
                 desc: `${item.name} (${item.var})`,
-                client: client,
                 qty: qty,
-                priceUnit: price,
                 total: total.toFixed(2),
                 profit: profit.toFixed(2)
-            };
+            });
 
-            sales.unshift(saleRecord);
             sellModal.hide();
-            
-            saveData(); // Guarda el inventario Y el nuevo contador
+            saveData(); 
             render();
             renderSales();
-
-            if (shouldPrint) {
-                printInvoice(saleRecord);
-            }
         }
     };
-
-    function printInvoice(sale) {
-        document.getElementById('invDate').innerText = new Date().toLocaleDateString();
-        // Usamos el ID correlativo
-        document.getElementById('invId').innerText = sale.id; 
-        document.getElementById('invClient').innerText = sale.client;
-        document.getElementById('invDoc').innerText = document.getElementById('mClientDoc').value || "No indicado";
-        
-        document.getElementById('invItems').innerHTML = `
-            <tr>
-                <td>${sale.desc}</td>
-                <td class="text-center">${sale.qty}</td>
-                <td class="text-end">$${parseFloat(sale.priceUnit).toFixed(2)}</td>
-                <td class="text-end">$${sale.total}</td>
-            </tr>
-        `;
-        document.getElementById('invTotal').innerText = "$" + sale.total;
-
-        setTimeout(() => {
-            window.print();
-        }, 500);
-    }
 
     function renderSales() {
         let html = "";
         sales.slice(0, 50).forEach((s, i) => {
             html += `<tr>
-                <td class="text-muted fw-bold">#${s.id || '---'}</td>
                 <td><small>${s.date.split(',')[0]}</small></td>
-                <td><small class="text-muted">${s.client || '-'}</small></td>
                 <td>${s.desc}</td>
+                <td>${s.qty}</td>
                 <td class="text-success fw-bold">$${s.total}</td>
+                <td class="text-primary small">$${s.profit}</td>
                 <td><button class="btn-close" onclick="delSale(${i})"></button></td>
             </tr>`;
         });
@@ -563,7 +498,7 @@
 
     window.newItem = () => {
         const n = prompt("Nombre del producto:");
-        if(n) { inventory.unshift({cat:"Nuevo", name:n, var:"-", price:0, cost:0, stock:0, img:""}); render(); }
+        if(n) { inventory.unshift({cat:"Nuevo", name:n, var:"-", price:0, cost:0, stock:0, img:""}); render(); saveData(); }
     };
 
     init();
